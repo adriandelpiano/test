@@ -1,0 +1,65 @@
+cat <<'EOF' > test_balance_send.py
+import json, requests, os
+
+BASE_DIR = os.path.dirname(__file__)
+RPCS_FILE = os.path.join(BASE_DIR, "rpcs.json")
+
+with open(RPCS_FILE, "r", encoding="utf-8") as f:
+    rpcs = json.load(f)
+
+GREEN = "\033[92m"
+RESET = "\033[0m"
+
+def test_balance_and_send(name, url, address):
+    ok_cmds = []
+
+    # Test de balance
+    payload_balance = {
+        "jsonrpc":"2.0",
+        "method":"eth_getBalance",
+        "params":[address, "latest"],
+        "id":1
+    }
+    try:
+        resp = requests.post(url, json=payload_balance, timeout=5).json()
+        if "result" in resp:
+            ok_cmds.append("eth_getBalance")
+    except:
+        pass
+
+    # Test de envío de transacción (ficticia)
+    fake_tx = "0xf86c808504a817c80082520894" + \
+              "0000000000000000000000000000000000000000" + \
+              "880de0b6b3a76400008025a0" + \
+              "0000000000000000000000000000000000000000000000000000000000000000" + \
+              "a0" + \
+              "0000000000000000000000000000000000000000000000000000000000000000"
+
+    payload_send = {
+        "jsonrpc":"2.0",
+        "method":"eth_sendRawTransaction",
+        "params":[fake_tx],
+        "id":2
+    }
+    try:
+        resp = requests.post(url, json=payload_send, timeout=5).json()
+        # Si responde con error, igual significa que el método existe
+        if "error" in resp or "result" in resp:
+            ok_cmds.append("eth_sendRawTransaction")
+    except:
+        pass
+
+    if ok_cmds:
+        print(f"{GREEN}[OK]{RESET} {name:<20} → {', '.join(ok_cmds)}")
+
+def main():
+    print("Ingrese dirección a probar (ejemplo 0x...):")
+    address = input("> ").strip()
+
+    print("=== RPCs con soporte de balance y envío ===")
+    for name, url in rpcs.items():
+        test_balance_and_send(name, url, address)
+
+if __name__ == "__main__":
+    main()
+EOF
